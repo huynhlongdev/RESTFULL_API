@@ -9,15 +9,6 @@ const generateAccessToken = (user) => {
   );
 };
 
-// Generate Refresh Token
-const generateRefreshToken = (user) => {
-  return jwt.sign(
-    { id: user._id, email: user.email },
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRES }
-  );
-};
-
 // Authenticate Access Token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -36,18 +27,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Verify Refresh Token
-const verifyRefreshToken = (token) => {
-  try {
-    return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-  } catch (err) {
-    return null;
-  }
-};
-
 module.exports = {
   generateAccessToken,
-  generateRefreshToken,
   authenticateToken,
-  verifyRefreshToken,
 };

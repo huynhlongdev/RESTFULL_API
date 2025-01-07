@@ -1,35 +1,52 @@
-const User = require("../models/User");
+const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
-const {
-  generateAccessToken,
-  generateRefreshToken,
-  verifyRefreshToken,
-} = require("../utils/token");
+const { generateAccessToken, verifyRefreshToken } = require("../utils/token");
 
-let refreshTokens = []; // Temporary storage for refresh tokens
-
-// Register User
-exports.registerUser = async (req, res) => {
+// @des Register User
+// @route POST /api/auth/register
+// @access Public
+exports.register = async (req, res) => {
   const { username, email, password } = req.body;
 
   try {
+    // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ username, email, password: hashedPassword });
+    // Check if user is the first user
+    const totalUsers = await User.countDocuments();
+
+    // Create user
+    const user = new User({
+      username,
+      email,
+      password,
+      role: totalUsers === 0 ? "admin" : "user", // Set role to admin if user is the first user
+    });
+
+    // Save user
     await user.save();
 
-    res.status(201).json({ message: "User registered successfully" });
+    // Remove password from user object
+    delete user.password;
+
+    res.status(201).json({
+      message: "User registered successfully",
+      user: user,
+      success: true,
+      token: generateAccessToken(user),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Login User
-exports.loginUser = async (req, res) => {
+// @des Login User
+// @route POST /api/auth/login
+// @access Public
+exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -40,49 +57,50 @@ exports.loginUser = async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
-
-    refreshTokens.push(refreshToken);
+    delete user.password;
 
     res.status(200).json({
       message: "Login successful",
-      accessToken,
-      refreshToken,
+      token: generateAccessToken(user),
+      data: user,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Refresh Token
-exports.refreshToken = (req, res) => {
-  const { refreshToken } = req.body;
+// @des Protect routes
+exports.protected = async (req, res, next) => {
+  let token;
 
-  if (!refreshToken)
-    return res.status(401).json({ message: "Refresh token required" });
-  if (!refreshTokens.includes(refreshToken)) {
-    return res.status(403).json({ message: "Invalid refresh token" });
+  if (
+    req.herders.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    token = req.headers.authorization.splits("")[1];
   }
 
-  const user = verifyRefreshToken(refreshToken);
-  if (!user)
-    return res
-      .status(403)
-      .json({ message: "Invalid or expired refresh token" });
+  if (!token) {
+    return res.status(401).json({ message: "Not authorized, no token" });
+  }
 
-  const accessToken = generateAccessToken(user);
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRECT);
+    console.log(">>> decoded", decoded);
 
-  res.status(200).json({
-    accessToken,
-  });
+    req.user = await User.findById(decoded.id);
+  } catch (err) {
+    return res.status(401).json({ message: "Not authorized, token failed" });
+  }
+  next();
 };
 
-// Logout User
-exports.logoutUser = (req, res) => {
-  const { refreshToken } = req.body;
-
-  refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
-
-  res.status(200).json({ message: "Logout successful" });
+// @des Allow for specific roles
+exports.allowedRole = (...roles) => {
+  return async (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+    next();
+  };
 };

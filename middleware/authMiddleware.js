@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const User = require("../models/UserModel");
 const { JWT_SECRET } = process.env;
 
 const protect = async (req, res, next) => {
@@ -23,7 +23,9 @@ const protect = async (req, res, next) => {
   }
 };
 
-const admin = (req, res, next) => {
+const accept = (req, res, next) => {
+  // accept(["admin", "manager"])
+
   if (req.user && req.user.role === "admin") {
     next();
   } else {
@@ -31,4 +33,4 @@ const admin = (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin };
+module.exports = { protect, accept };

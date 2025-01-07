@@ -18,9 +18,12 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.2"
+    "mongoose": "^8.9.2",
+    "slugify": "^1.6.6"
   },
   "devDependencies": {
+    "morgan": "^1.10.0",
+    "morgan-json": "^1.1.0",
     "nodemon": "^3.1.9"
   }
 }

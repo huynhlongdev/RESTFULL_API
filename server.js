@@ -1,10 +1,14 @@
 const express = require("express");
-const mongoose = require("mongoose");
+const morgan = require("morgan");
+const json = require("morgan-json");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const connectDB = require("./config/configDB");
 const bodyParser = require("body-parser");
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes"); // Import auth routes
+const categoryRoutes = require("./routes/categoryRoutes");
+const productsRoutes = require("./routes/productRoutes");
 
 // Load environment variables
 dotenv.config();
@@ -16,23 +20,30 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Routes
-app.use("/api/auth", authRoutes); // Auth routes
-app.use("/api/users", userRoutes); // User routes
+// Morgan format
+const format = json({
+  Request: ":method :url :status",
+});
 
-// Connect to MongoDB
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    console.log("Connected to MongoDB");
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err);
-  });
+// Logger
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan(format));
+}
+
+// connect to database
+connectDB();
+
+// Routes
+app.use("/api/v1/auth", authRoutes); // Auth routes
+app.use("/api/v1/users", userRoutes); // User routes
+// app.use("/api/vi/categories", categoryRoutes);
+
+app.use("/api/v1/products", productsRoutes);
+
+// Define PORT
+const PORT = process.env.PORT || 8000;
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
