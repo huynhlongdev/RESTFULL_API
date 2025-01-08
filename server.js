@@ -7,8 +7,8 @@ const connectDB = require("./config/configDB");
 const bodyParser = require("body-parser");
 const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes"); // Import auth routes
-const categoryRoutes = require("./routes/categoryRoutes");
 const productsRoutes = require("./routes/productRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
 
 // Load environment variables
 dotenv.config();
@@ -22,7 +22,7 @@ app.use(bodyParser.json());
 
 // Morgan format
 const format = json({
-  Request: ":method :url :status",
+  Method: ":method  :url :status",
 });
 
 // Logger
@@ -36,14 +36,14 @@ connectDB();
 // Routes
 app.use("/api/v1/auth", authRoutes); // Auth routes
 app.use("/api/v1/users", userRoutes); // User routes
-// app.use("/api/vi/categories", categoryRoutes);
 
 app.use("/api/v1/products", productsRoutes);
+app.use("/api/v1/categories", categoryRoutes);
 
 // Define PORT
 const PORT = process.env.PORT || 8000;
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port http://localhost:${PORT}`);
 });

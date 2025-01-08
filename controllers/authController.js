@@ -15,28 +15,30 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    // valid field
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Required fields" });
+    }
+
     // Check if user is the first user
     const totalUsers = await User.countDocuments();
 
     // Create user
-    const user = new User({
+    const user = await User.create({
       username,
       email,
       password,
       role: totalUsers === 0 ? "admin" : "user", // Set role to admin if user is the first user
     });
 
-    // Save user
-    await user.save();
-
     // Remove password from user object
     delete user.password;
 
     res.status(201).json({
       message: "User registered successfully",
-      user: user,
       success: true,
       token: generateAccessToken(user),
+      user,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -50,19 +52,24 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Check if user exists
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "User not found" });
 
+    // Check if password is correct
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    delete user.password;
+    // Remove password from user object
+    const userObject = user.toObject();
+    delete userObject.password;
 
     res.status(200).json({
       message: "Login successful",
+      success: true,
       token: generateAccessToken(user),
-      data: user,
+      user: userObject,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

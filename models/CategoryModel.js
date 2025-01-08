@@ -14,15 +14,21 @@ const categorySchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    image: {
-      type: String,
-    },
-    desctions: {
+    descriptions: {
       type: String,
       trim: true,
     },
+    image: {
+      type: String,
+    },
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
+
+categorySchema.virtual("products", {
+  ref: "Product", // Model
+  localField: "_id", // Field
+  foreignField: "category", // Field
+});
 
 module.exports = mongoose.model("Category", categorySchema);

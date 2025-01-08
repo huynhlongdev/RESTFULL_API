@@ -1,3 +1,4 @@
+const { default: slugify } = require("slugify");
 const Product = require("../models/ProductModel");
 
 /* 
@@ -6,9 +7,23 @@ Create Product (Admin only)
 @access Private
 */
 exports.createProduct = async (req, res) => {
-  const { name, description, price, quantity, sold, brand } = req.body;
+  const { name, description, price, quantity, sold, brand, category } =
+    req.body;
 
   try {
+    const productExists = await Product.findOne({ name });
+
+    // Check if product exists
+    if (productExists) {
+      return res
+        .status(400)
+        .json({ message: "Product already exits", success: false });
+    }
+
+    // Create slug
+    const slug = slugify(name, { lower: true });
+
+    // Create product
     const product = await Product.create({
       name,
       description,
@@ -16,6 +31,8 @@ exports.createProduct = async (req, res) => {
       quantity,
       sold,
       brand,
+      slug,
+      category,
     });
 
     res.status(201).json({ message: "Product created successfully", product });
@@ -24,23 +41,54 @@ exports.createProduct = async (req, res) => {
   }
 };
 
-// Get Products List
+// @Des Get Products List
 // @route GET /api/v1/products
 // @access Public
 exports.getProducts = async (req, res) => {
   try {
-    const { page, limit } = req.query;
-    const products = await Product.find()
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .populate("category", "name");
+    const { page = 1, limit = 10, name, sort = "DESC" } = req.query;
+
+    let query = {};
+    let sortOption = {};
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+
+    // Check if name query exists
+    if (name) {
+      query.name = { $regex: name, $options: "i" };
+    }
+
+    if (sort) {
+      const validSortValues = ["ASC", "DESC"];
+      if (validSortValues.includes(sort.toUpperCase())) {
+        sortOption.name = sort.toUpperCase() === "DESC" ? -1 : 1;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid sort value. Use "ASC" or "DESC" only.`,
+        });
+      }
+    }
+
+    // Get total products
+    const totalProducts = await Product.countDocuments(query);
+
+    // Get products with pagination
+    const products = await Product.find(query)
+      .sort(sortOption) // Sort by name
+      .limit(limitNumber) // limit number of products
+      .skip((pageNumber - 1) * limitNumber); // Skip to the next page
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalProducts / limitNumber);
 
     res.status(200).json({
       success: true,
-      totalProduct: products.length,
-      curentPage: page,
-      limit: limit,
-      // curentPage: Math.ceil(products.length / limit) || 1,
+      totalProducts,
+      currentPage: pageNumber,
+      totalPages,
+      limit: limitNumber,
       data: products,
     });
   } catch (err) {
@@ -48,19 +96,20 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-// Get Product by ID
+// @Des Get Product by ID
 // @route GET /api/v1/products/:id
 // @access Public
 exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
+    // Check if product exists
     if (!product) {
       return res.status(400).json({ message: "Product not found" });
     }
+
     res.status(200).json({
-      data: product,
-      total: product.length,
       success: true,
+      data: product,
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
