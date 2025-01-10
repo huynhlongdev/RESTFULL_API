@@ -9,6 +9,7 @@ const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes"); // Import auth routes
 const productsRoutes = require("./routes/productRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 // Load environment variables
 dotenv.config();
@@ -39,6 +40,7 @@ app.use("/api/v1/users", userRoutes); // User routes
 
 app.use("/api/v1/products", productsRoutes);
 app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/reviews", reviewRoutes);
 
 // Define PORT
 const PORT = process.env.PORT || 8000;

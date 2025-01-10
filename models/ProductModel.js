@@ -70,7 +70,7 @@ const productSchema = new mongoose.Schema(
       ref: "User",
     },
   },
-  { timestamps: true, toJSON: { virtuals: true } }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
 // Count total number of reviews for the product
@@ -97,5 +97,12 @@ productSchema.virtual("averageRating").get(function () {
 
   return Number(averageRating); // Convert to number for consistency
 });
+
+// productSchema.virtual("reviews", {
+//   ref: "Review",
+//   localField: "_id",
+//   foreignField: "product",
+//   justOne: false,
+// });
 
 module.exports = mongoose.model("Product", productSchema);

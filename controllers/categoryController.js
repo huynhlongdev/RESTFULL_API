@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const slugify = require("slugify");
 const CategoryModel = require("../models/CategoryModel");
+const { handleSlug } = require("../utils/slug");
 
 // @des Create category
 // @route POST / api.v1/categories
@@ -15,12 +16,7 @@ exports.createCategory = async (req, res) => {
       return res.status(400).json({ message: "Category already exists" });
     }
 
-    const slug = slugify(name, {
-      replacement: "-",
-      remove: /[^a-zA-Z0-9\u00C0-\u017F\s-]/g,
-      lower: true,
-      locale: "vi",
-    });
+    const slug = handleSlug(name);
 
     // Create category
     const category = await CategoryModel.create({
@@ -57,7 +53,7 @@ exports.getCategories = async (req, res) => {
     const pageNumber = parseInt(page, 10);
     const limitNumber = parseInt(limit, 10);
 
-    //
+    // Check if exist list ids
     if (ids) {
       const idList = ids
         .split(",")
@@ -72,12 +68,16 @@ exports.getCategories = async (req, res) => {
       }
     }
 
+    // Query data
+    // Limit data
+    // Skip data
+    // Sort data
     let categoriesQuery = CategoryModel.find(query)
-      .limit(limitNumber) // limit number of products
+      .limit(limitNumber)
       .skip((pageNumber - 1) * limitNumber)
       .sort({ createdAt: sort === "ASC" ? 1 : -1 });
 
-    //
+    // Check if show product == 1
     if (parseInt(showProduct) === 1) {
       categoriesQuery = categoriesQuery.populate("products");
     }
@@ -151,18 +151,16 @@ exports.updateCategory = async (req, res) => {
     if (!categoryExists) {
       return res.status(400).json({ message: "Category not found" });
     }
-    const slug = slugify(req.body?.name, {
-      replacement: "-",
-      remove: /[^a-zA-Z0-9\u00C0-\u017F\s-]/g,
-      lower: true,
-      locale: "vi",
-    });
 
+    const slug = handleSlug(nareq.body?.name);
+
+    //
     const duplicateCategory = await CategoryModel.findOne({
       _id: { $ne: id },
       $or: [{ name: name }, { slug: slug }],
     });
 
+    // Check if category exist
     if (duplicateCategory) {
       return res.status(400).json({
         success: false,

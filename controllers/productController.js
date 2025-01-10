@@ -79,7 +79,6 @@ exports.getProducts = async (req, res) => {
       .sort(sortOption) // Sort by name
       .limit(limitNumber) // limit number of products
       .skip((pageNumber - 1) * limitNumber); // Skip to the next page
-
     // Calculate total pages
     const totalPages = Math.ceil(totalProducts / limitNumber);
 
@@ -101,7 +100,19 @@ exports.getProducts = async (req, res) => {
 // @access Public
 exports.getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate({
+        path: "reviews",
+        select: "message rating user",
+        populate: {
+          path: "user", // Populate thông tin user
+          select: "username email", // Chỉ lấy các trường cần thiết từ user
+        },
+      })
+      .populate({
+        path: "category",
+        select: "name slug",
+      });
     // Check if product exists
     if (!product) {
       return res.status(400).json({ message: "Product not found" });
