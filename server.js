@@ -10,12 +10,17 @@ const authRoutes = require("./routes/authRoutes"); // Import auth routes
 const productsRoutes = require("./routes/productRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const mediaRoutes = require("./routes/mediaRoutes");
+
+const path = require("path");
 
 // Load environment variables
 dotenv.config();
 
 // Initialize app
 const app = express();
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Middleware
 app.use(cors());
@@ -41,6 +46,7 @@ app.use("/api/v1/users", userRoutes); // User routes
 app.use("/api/v1/products", productsRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/v1/upload", mediaRoutes);
 
 // Define PORT
 const PORT = process.env.PORT || 8000;

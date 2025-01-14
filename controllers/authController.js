@@ -2,9 +2,13 @@ const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
 const { generateAccessToken, verifyRefreshToken } = require("../utils/token");
 
-// @des Register User
-// @route POST /api/auth/register
-// @access Public
+/**
+ * Description: Register user
+ * Route: /api/v1/auth/register
+ * Method: POST
+ * Body: {username, email, password}
+ * Access: Public
+ */
 exports.register = async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -45,9 +49,13 @@ exports.register = async (req, res) => {
   }
 };
 
-// @des Login User
-// @route POST /api/auth/login
-// @access Public
+/**
+ * Description: Login User
+ * Route: /api/v1/auth/login
+ * Method: POST
+ * Body: {email, password}
+ * Access: Public
+ */
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
