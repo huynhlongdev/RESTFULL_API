@@ -3,22 +3,6 @@ const cloudinary = require("../config/cloudinaryConfig");
 
 exports.uploadMedia = async (req, res) => {
   try {
-    // Lấy đường dẫn file đã upload từ Multer
-    // const filePath = `uploads/${req.file.filename}`;
-
-    // // Tạo mới một Media trong MongoDB
-    // const newMedia = new mediaModel({
-    //   url: filePath, // Đường dẫn file
-    // });
-
-    // await newMedia.save();
-
-    // res.status(201).json({
-    //   success: true,
-    //   message: "File uploaded successfully!",
-    //   data: newMedia,
-    // });
-
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -28,7 +12,7 @@ exports.uploadMedia = async (req, res) => {
 
     cloudinary.uploader
       .upload_stream(
-        { folder: "uploads" }, // Chọn thư mục upload trên Cloudinary
+        { folder: "media" }, // Chọn thư mục upload trên Cloudinary
         async (error, result) => {
           if (error) {
             return res.status(500).json({

@@ -1,6 +1,6 @@
 const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
-const { generateAccessToken, verifyRefreshToken } = require("../utils/token");
+const { generateAccessToken, verifyToken } = require("../utils/token");
 
 /**
  * Description: Register user
@@ -82,40 +82,4 @@ exports.login = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};
-
-// @des Protect routes
-exports.protected = async (req, res, next) => {
-  let token;
-
-  if (
-    req.herders.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    token = req.headers.authorization.splits("")[1];
-  }
-
-  if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRECT);
-    console.log(">>> decoded", decoded);
-
-    req.user = await User.findById(decoded.id);
-  } catch (err) {
-    return res.status(401).json({ message: "Not authorized, token failed" });
-  }
-  next();
-};
-
-// @des Allow for specific roles
-exports.allowedRole = (...roles) => {
-  return async (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-    next();
-  };
 };

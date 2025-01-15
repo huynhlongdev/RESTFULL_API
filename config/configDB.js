@@ -1,4 +1,3 @@
-// Import the mongoose module
 const mongoose = require("mongoose");
 
 // Connect to MongoDB

@@ -7,7 +7,7 @@ const {
   updateProduct,
   deleteProduct,
 } = require("../controllers/productController");
-const { protect, accept } = require("../middleware/authMiddleware");
+// const { protect, accept } = require("../middleware/authMiddleware");
 
 // Create product
 router.post("/", createProduct);

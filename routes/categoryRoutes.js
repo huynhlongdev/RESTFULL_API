@@ -8,11 +8,16 @@ const {
   updateCategory,
 } = require("../controllers/categoryController");
 
-router.route("/").post(createCategory).get(getCategories);
+const { protected, allowedRole } = require("../middleware/authMiddleware");
+
+router
+  .route("/")
+  .post(protected, allowedRole("admin", "manage"), createCategory)
+  .get(getCategories);
 router
   .route("/:id")
   .get(getCategory)
-  .put(updateCategory)
-  .delete(deleteCategory);
+  .put(protected, updateCategory)
+  .delete(protected, deleteCategory);
 
 module.exports = router;

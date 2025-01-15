@@ -1,9 +1,8 @@
-// @des Create new review with product
-// @router POST /api/v1/review/
-
 const ReviewModel = require("../models/ReviewModel");
 const Product = require("../models/ProductModel");
 
+// @des Create new review with product
+// @router POST /api/v1/review/
 // @access Private
 exports.createReview = async (req, res) => {
   try {

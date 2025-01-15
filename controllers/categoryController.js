@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const slugify = require("slugify");
 const CategoryModel = require("../models/CategoryModel");
 const { handleSlug } = require("../utils/slug");
 
@@ -7,7 +6,10 @@ const { handleSlug } = require("../utils/slug");
 // @route POST / api.v1/categories
 // @access Private / Admin/ Manager
 exports.createCategory = async (req, res) => {
-  const { name, descriptions } = req.body;
+  const { name, descriptions, image } = req.body;
+
+  const userId = req?.userId;
+
   try {
     const categoryExists = await CategoryModel.findOne({ name });
 
@@ -23,6 +25,8 @@ exports.createCategory = async (req, res) => {
       name,
       descriptions,
       slug,
+      user: userId,
+      image,
     });
 
     return res.status(201).json({
@@ -75,8 +79,11 @@ exports.getCategories = async (req, res) => {
     let categoriesQuery = CategoryModel.find(query)
       .limit(limitNumber)
       .skip((pageNumber - 1) * limitNumber)
-      .sort({ createdAt: sort === "ASC" ? 1 : -1 });
-
+      .sort({ createdAt: sort === "ASC" ? 1 : -1 })
+      .populate({
+        path: "image",
+        select: "url -_id",
+      });
     // Check if show product == 1
     if (parseInt(showProduct) === 1) {
       categoriesQuery = categoriesQuery.populate("products");
@@ -115,7 +122,10 @@ exports.getCategory = async (req, res) => {
       : { slug: id };
 
     // Build query
-    let categoryQuery = CategoryModel.findOne(query);
+    let categoryQuery = CategoryModel.findOne(query).populate({
+      path: "image",
+      select: "url -_id",
+    });
 
     // Populate products if requested
     if (parseInt(showProduct) === 1) {
