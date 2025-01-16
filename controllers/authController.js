@@ -1,6 +1,6 @@
 const User = require("../models/UserModel");
 const bcrypt = require("bcrypt");
-const { generateAccessToken, verifyToken } = require("../utils/token");
+const { generateAccessToken } = require("../utils/token");
 
 /**
  * Description: Register user
