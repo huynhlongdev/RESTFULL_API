@@ -49,6 +49,13 @@ app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/upload", mediaRoutes);
 
+app.get("/", (req, res) => {
+  res.json({
+    message: "Welcome to E-commerce Api",
+    success: true,
+  });
+});
+
 // Handle Middleware: Handle 404 not found
 app.use(notFoundMiddleware);
 
