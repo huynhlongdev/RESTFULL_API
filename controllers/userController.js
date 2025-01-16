@@ -1,11 +1,11 @@
 const User = require("../models/UserModel");
+const mongoose = require("mongoose");
 
-// @des Get all users
+// @desc Get all users
 // @route GET /api/v1/users
 // @assess Private
 exports.getUsers = async (req, res) => {
   try {
-    // Set default limit and page values
     const limit = parseInt(req.query.limit) || 10; // Default limit: 10
     const page = parseInt(req.query.page) || 0; // Default page: 0 (first page)
 
@@ -13,7 +13,9 @@ exports.getUsers = async (req, res) => {
 
     const user = await User.find()
       .limit(limit)
-      .skip(page * limit);
+      .skip(page * limit)
+      .select("-password");
+
     res.status(200).json({
       data: user,
       success: true,
@@ -25,17 +27,29 @@ exports.getUsers = async (req, res) => {
   } catch (error) {}
 };
 
-// @des Get user profile
+// @desc Get user profile
 // @route GET /api/v1/users/profile
 // @access Private
-exports.getUserProfile = (req, res) => {
-  const { user } = req;
-  res
-    .status(200)
-    .json({ message: "User profile retrieved successfully", user });
+exports.getUserProfile = async (req, res) => {
+  const { userId } = req;
+
+  const checkUserId = mongoose.Types.ObjectId.isValid(userId);
+  const user = await User.findById(userId).select("-password");
+
+  if (!checkUserId && !user) {
+    res.status(400).json({
+      message: "Permission denied",
+      success: false,
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
 };
 
-// @des Update profile
+// @desc Update profile
 // @route PUT /api/v1/users/profile
 // @access Privete
 exports.updateProfile = async (req, res) => {
@@ -48,7 +62,7 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// @des Update user by id
+// @desc Update user by id
 // @route PUT/ PATCH /api/v1/users/:id
 // @access Privete
 exports.updateUser = async (req, res) => {
@@ -83,7 +97,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// @des Delete user
+// @desc Delete user
 // @route DELETE /api/v1/users/:id
 // @access Private
 exports.deleteUser = async (req, res) => {

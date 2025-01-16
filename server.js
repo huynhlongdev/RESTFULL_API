@@ -1,6 +1,4 @@
 const express = require("express");
-const morgan = require("morgan");
-const json = require("morgan-json");
 const dotenv = require("dotenv");
 const path = require("path");
 const cors = require("cors");
@@ -28,16 +26,6 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(cors());
 app.use(bodyParser.json());
 
-// Morgan format
-const format = json({
-  Method: ":method  :url :status",
-});
-
-// Logger
-if (process.env.NODE_ENV === "development") {
-  app.use(morgan(format));
-}
-
 // connect to database
 connectDB();
 
@@ -48,7 +36,6 @@ app.use("/api/v1/products", productsRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/upload", mediaRoutes);
-
 app.get("/", (req, res) => {
   res.json({
     message: "Welcome to E-commerce Api",
@@ -67,5 +54,5 @@ const PORT = process.env.PORT || 8000;
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server is running on port http://localhost:${PORT}/api/v1`);
+  console.log(`Server is running on port http://localhost:${PORT}`);
 });

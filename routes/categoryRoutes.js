@@ -14,6 +14,7 @@ router
   .route("/")
   .post(protected, allowedRole("admin", "manage"), createCategory)
   .get(getCategories);
+
 router
   .route("/:id")
   .get(getCategory)

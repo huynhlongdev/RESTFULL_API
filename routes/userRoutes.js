@@ -7,10 +7,12 @@ const {
   getUsers,
 } = require("../controllers/userController");
 
-router.route("/").get(getUsers);
+const { protected, allowedRole } = require("../middleware/authMiddleware");
 
-// User Routes
-// router.get("/profile", authenticateToken, getUserProfile);
-router.route("/:id").put(updateUser).delete(deleteUser);
+router.route("/").get(protected, getUsers);
+
+router.route("/profile").get(protected, getUserProfile);
+
+router.route("/:id").put(protected, updateUser).delete(protected, deleteUser);
 
 module.exports = router;
