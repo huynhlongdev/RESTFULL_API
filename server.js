@@ -2,6 +2,7 @@ const express = require("express");
 const morgan = require("morgan");
 const json = require("morgan-json");
 const dotenv = require("dotenv");
+const path = require("path");
 const cors = require("cors");
 const connectDB = require("./config/configDB");
 const bodyParser = require("body-parser");
@@ -12,7 +13,8 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const mediaRoutes = require("./routes/mediaRoutes");
 
-const path = require("path");
+const { notFoundMiddleware } = require("./middleware/notFound");
+const { errorMiddleware } = require("./middleware/errorMiddleware");
 
 // Load environment variables
 dotenv.config();
@@ -40,18 +42,23 @@ if (process.env.NODE_ENV === "development") {
 connectDB();
 
 // Routes
-app.use("/api/v1/auth", authRoutes); // Auth routes
-app.use("/api/v1/users", userRoutes); // User routes
-
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/products", productsRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/upload", mediaRoutes);
+
+// Handle Middleware: Handle 404 not found
+app.use(notFoundMiddleware);
+
+// Handle Middleware: Handle Errors
+app.use(errorMiddleware);
 
 // Define PORT
 const PORT = process.env.PORT || 8000;
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server is running on port http://localhost:${PORT}`);
+  console.log(`Server is running on port http://localhost:${PORT}/api/v1`);
 });
