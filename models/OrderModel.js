@@ -28,14 +28,18 @@ const orderSchema = new mongosee.Schema(
     status: {
       type: String,
       default: "pending",
-      enum: ["pending", "progressing", "shipped", "delivery"],
+      enum: ["pending", "paid", "failed", "progressing", "shipped", "delivery"],
     },
     user: {
       type: mongosee.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    totalPrice: {
+    total: {
+      type: Number,
+      required: true,
+    },
+    subTotal: {
       type: Number,
       required: true,
     },
@@ -44,6 +48,10 @@ const orderSchema = new mongosee.Schema(
     },
     deliveredAt: {
       type: Date,
+    },
+    shipingAddress: {
+      type: Object,
+      require: true,
     },
   },
   { timestamps: true }

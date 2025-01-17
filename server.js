@@ -10,6 +10,7 @@ const productsRoutes = require("./routes/productRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const mediaRoutes = require("./routes/mediaRoutes");
+const couponRoutes = require("./routes/couponRoutes");
 
 const { notFoundMiddleware } = require("./middleware/notFound");
 const { errorMiddleware } = require("./middleware/errorMiddleware");
@@ -36,6 +37,7 @@ app.use("/api/v1/products", productsRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/upload", mediaRoutes);
+app.use("/api/v1/coupon", couponRoutes);
 app.get("/", (req, res) => {
   res.json({
     message: "Welcome to E-commerce Api",
