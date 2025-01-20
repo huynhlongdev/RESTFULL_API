@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema(
     },
     active: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     phone: String,
     bio: String,
@@ -36,21 +36,31 @@ const userSchema = new mongoose.Schema(
         ref: "Product",
       },
     ],
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
-  { timestamps: true }
+  { timestamps: true, minimize: true }
 );
 
 // Hash password before saving to database
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next("Password not modified");
+  if (!this.isModified("password")) {
+    return next();
+  }
 
-  // Generate salt
-  const salt = await bcrypt.genSalt(parseInt(process.env.SALT));
-
-  // Hash password
-  this.password = await bcrypt.hash(this.password, 10);
-
-  next();
+  try {
+    // Generate salt
+    const salt = await bcrypt.genSalt(parseInt(process.env.SALT));
+    // Hash password
+    this.password = await bcrypt.hash(this.password, 10);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
+
+userSchema.methods.validatePassword = async function (password) {
+  // return await bcrypt.compare(password, this.password);
+};
 
 module.exports = mongoose.model("User", userSchema);
