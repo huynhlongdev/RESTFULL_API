@@ -50,9 +50,19 @@ exports.allowedRole = (...roles) => {
         });
       }
 
+      if (!user.active) {
+        return res.status(403).json({
+          message: "This account is not activated.",
+          success: false,
+        });
+      }
+
       next();
     } catch (err) {
-      return res.status(500).json({ message: "Server error" });
+      return res.status(500).json({
+        message: "Server error",
+        success: false,
+      });
     }
   };
 };
