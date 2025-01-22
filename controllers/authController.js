@@ -18,7 +18,11 @@ exports.register = async (req, res) => {
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
+      return res
+        .status(400)
+        .json({ message: "User already exists", success: false });
+
+      // throw new Error("User already exists");
     }
 
     // valid field
@@ -69,14 +73,14 @@ exports.login = async (req, res) => {
     // Check if password is correct
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Incorrect password" });
 
     // Remove password from user object
     const userObject = user.toObject();
     delete userObject.password;
 
     res.status(200).json({
-      message: "Login successful",
+      message: "Login successfully",
       success: true,
       token: generateAccessToken(user),
       user: userObject,
@@ -91,13 +95,14 @@ exports.login = async (req, res) => {
 // @access public
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, link } = req.body;
 
     const userFound = await User.findOne({ email });
 
     // Check user exist
     if (!userFound) {
-      return res.json({ message: "User not found", success: false });
+      // return res.json({ message: "User not found", success: false });
+      throw new Error("User not found");
     }
 
     // Create a token to reset, expires in 10 minutes
@@ -115,9 +120,7 @@ exports.forgotPassword = async (req, res) => {
     await userFound.save();
 
     // Create a URL to reset password
-    const resetUrl = `${req.protocol}://${req.get(
-      "host"
-    )}/api/v1/auth/reset-password/?token=${resetToken}`;
+    const resetUrl = `${link}/?token=${resetToken}`;
 
     const emailStatus = await handleEmail("reset", userFound.email, resetUrl);
     // check sent mail success
