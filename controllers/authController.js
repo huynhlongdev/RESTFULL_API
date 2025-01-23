@@ -44,10 +44,23 @@ exports.register = async (req, res) => {
     // Remove password from user object
     delete user.password;
 
+    const token = generateAccessToken(user);
+
+    // Create a URL to reset password
+    const resetUrl = `${link}/?token=${token}`;
+
+    const emailStatus = await handleEmail("reset", user.email, resetUrl);
+    // check sent mail success
+    if (!emailStatus.success) {
+      return res.status(500).json({
+        message: "Failed to send email",
+      });
+    }
+
     res.status(201).json({
       message: "User registered successfully",
       success: true,
-      token: generateAccessToken(user),
+      token,
       user,
     });
   } catch (err) {
@@ -79,10 +92,16 @@ exports.login = async (req, res) => {
     const userObject = user.toObject();
     delete userObject.password;
 
+    const token = generateAccessToken(user);
+
+    res.cookie("accessToken", token, {
+      expires: new Date(Date.now() + 7 * 24 * 60 * 6 * 1000),
+    });
+
     res.status(200).json({
       message: "Login successfully",
       success: true,
-      token: generateAccessToken(user),
+      token,
       user: userObject,
     });
   } catch (err) {
@@ -177,4 +196,11 @@ exports.resetPassword = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
+};
+
+exports.activeUser = async (req, res, next) => {
+  try {
+    const { link } = req.body;
+    // const resetUrl = `${link}/?token=${resetToken}`;
+  } catch (error) {}
 };

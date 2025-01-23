@@ -4,13 +4,7 @@ const path = require("path");
 const cors = require("cors");
 const connectDB = require("./config/configDB");
 const bodyParser = require("body-parser");
-const userRoutes = require("./routes/userRoutes");
-const authRoutes = require("./routes/authRoutes"); // Import auth routes
-const productsRoutes = require("./routes/productRoutes");
-const categoryRoutes = require("./routes/categoryRoutes");
-const reviewRoutes = require("./routes/reviewRoutes");
-const mediaRoutes = require("./routes/mediaRoutes");
-const couponRoutes = require("./routes/couponRoutes");
+var cookieParser = require("cookie-parser");
 
 const { notFoundMiddleware } = require("./middleware/notFound");
 const { errorMiddleware } = require("./middleware/errorMiddleware");
@@ -24,20 +18,26 @@ const app = express();
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5000",
+    credentials: true,
+  })
+);
 app.use(bodyParser.json());
+app.use(cookieParser());
 
 // connect to database
 connectDB();
 
 // Routes
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/users", userRoutes);
-app.use("/api/v1/products", productsRoutes);
-app.use("/api/v1/categories", categoryRoutes);
-app.use("/api/v1/reviews", reviewRoutes);
-app.use("/api/v1/upload", mediaRoutes);
-app.use("/api/v1/coupon", couponRoutes);
+app.use("/api/v1/auth", require("./routes/authRoutes"));
+app.use("/api/v1/users", require("./routes/userRoutes"));
+app.use("/api/v1/products", require("./routes/productRoutes"));
+app.use("/api/v1/categories", require("./routes/categoryRoutes"));
+app.use("/api/v1/reviews", require("./routes/reviewRoutes"));
+app.use("/api/v1/upload", require("./routes/mediaRoutes"));
+app.use("/api/v1/coupon", require("./routes/couponRoutes"));
 app.get("/", (req, res) => {
   res.json({
     message: "Welcome to E-commerce Api",
