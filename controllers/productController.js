@@ -25,7 +25,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
   const slug = await handleSlug(productName, Product);
 
   // Trim and limit description to 120 words
-  req.body.short_description = shortContent(description, 40);
+  description && (req.body.short_description = shortContent(description, 40));
   req.body.user = userId;
   req.body.slug = slug;
   const product = await Product.create(req.body);
@@ -156,8 +156,9 @@ exports.getProducts = asyncHandler(async (req, res) => {
 // @access Public
 exports.getProduct = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const { variant } = req.query;
 
-  // Validate query
+  // Validate ID or slug
   const query = mongoose.Types.ObjectId.isValid(id)
     ? { _id: id }
     : { slug: id };
@@ -184,9 +185,92 @@ exports.getProduct = asyncHandler(async (req, res) => {
     });
   }
 
+  // ✅ Lấy variant được chọn (nếu có)
+  let selectedVariant = null;
+  if (variant && mongoose.Types.ObjectId.isValid(variant)) {
+    selectedVariant = product.variants.find(
+      (v) => v._id.toString() === variant
+    );
+  }
+
+  const variants = (product.variants || []).map((v) => ({
+    id: v._id,
+    sku: v.sku,
+    name: `${product.name} ` + v.attributes.map((a) => a.value).join(" "),
+    option1: v.attributes[0]?.value || null,
+    option2: v.attributes[1]?.value || null,
+    option3: v.attributes[2]?.value || null,
+    price: v.price,
+    original_price: v.original_price,
+    inventory_status: v.inventory_status,
+    images: v.images,
+    selected: selectedVariant ? selectedVariant._id.equals(v._id) : false,
+  }));
+
+  // Xử lý attributes
+  const attributes = product.attributes?.map((attr) => ({
+    code: attr.code,
+    name: attr.name,
+    position: attr.position,
+    values: attr.values.map((v) => ({
+      label: v.label,
+      value: v.value,
+    })),
+  }));
+
+  // Xử lý specifications (chia nhóm như Tiki)
+  const specifications = product.specifications?.map((spec) => ({
+    name: spec.name,
+    attributes: spec.attributes.map((a) => ({
+      name: a.name,
+      value: a.value,
+    })),
+  }));
+
+  const response = {
+    id: product._id,
+    name: product.name,
+    slug: product.slug,
+    short_description: product.short_description,
+    description: product.description,
+    category: product.category,
+    brand: product.brand,
+    images: product.images?.map((img) => img.url) || [],
+    thumbnail: product.thumbnail?.url || null,
+    price: selectedVariant ? selectedVariant.price : product.price,
+    original_price: selectedVariant
+      ? selectedVariant.original_price
+      : product.original_price,
+    inventory_status: selectedVariant
+      ? selectedVariant.inventory_status
+      : product.quantity > 0
+      ? "available"
+      : "out_of_stock",
+    stock_quantity: selectedVariant
+      ? selectedVariant.stock_quantity
+      : product.quantity,
+    sold: product.sold,
+    quantity: product.quantity,
+    reviews: product.reviews,
+    totalReviews: product.totalReviews,
+    averageRating: product.averageRating,
+    attributes,
+    selected_variant: selectedVariant || null,
+    variants,
+    specifications,
+    meta: {
+      title: product.metaTitle || product.name,
+      description: product.metaDescription || product.short_description || "",
+    },
+    created_at: product.createdAt,
+    updated_at: product.updatedAt,
+  };
+
+  console.log(product);
+
   res.status(200).json({
     success: true,
-    data: product,
+    data: response,
   });
 });
 

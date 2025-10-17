@@ -15,10 +15,7 @@ exports.createReview = asyncHandler(async (req, res) => {
   const userId = req?.userId;
 
   if (!rating && !message && !userId && !id) {
-    return res.status(400).json({
-      message: "The fields invalid",
-      success: false,
-    });
+    throw new ApiError(400, "The fields invalid");
   }
 
   // 3️⃣ Tìm user và product
@@ -28,19 +25,11 @@ exports.createReview = asyncHandler(async (req, res) => {
   ]);
 
   if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: "User not found",
-    });
+    throw new ApiError(404, "User not found");
   }
 
-  console.log(user);
-
   if (!product) {
-    return res.status(404).json({
-      success: false,
-      message: "Product not found",
-    });
+    throw new ApiError(404, "Product not found");
   }
 
   // 4️⃣ Kiểm tra user có đơn hàng chứa sản phẩm này không
@@ -50,13 +39,7 @@ exports.createReview = asyncHandler(async (req, res) => {
     status: { $in: ["completed", "delivered"] },
   });
 
-  // if (!hasPurchased && user.role != "admin") {
-  if (!hasPurchased) {
-    // return res.status(403).json({
-    //   success: false,
-    //   message: "You can only review products you have purchased",
-    // });
-    // throw new Error("You can only review products you have purchased");
+  if (!hasPurchased && user.role != "admin") {
     throw new ApiError(403, "You can only review products you have purchased");
   }
 
@@ -66,11 +49,8 @@ exports.createReview = asyncHandler(async (req, res) => {
     user: userId,
   });
 
-  if (existingReview) {
-    return res.status(400).json({
-      success: false,
-      message: "You have already reviewed this product",
-    });
+  if (existingReview && user.role != "admin") {
+    throw new ApiError(400, "You have already reviewed this product");
   }
 
   // Create a new review
