@@ -1,6 +1,6 @@
-const mongosee = require("mongoose");
+const mongoose = require("mongoose");
 
-const orderSchema = new mongosee.Schema(
+const orderSchema = new mongoose.Schema(
   {
     orderItems: [
       {
@@ -17,21 +17,31 @@ const orderSchema = new mongosee.Schema(
           type: Number,
         },
         products: {
-          type: mongosee.Schema.Types.ObjectId,
+          type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
         },
       },
     ],
     payment: {
       type: String,
+      enum: ["cash", "credit_card", "paypal", "bank_transfer"],
+      default: "cash",
     },
     status: {
       type: String,
+      enum: [
+        "pending",
+        "paid",
+        "failed",
+        "progressing",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ],
       default: "pending",
-      enum: ["pending", "paid", "failed", "progressing", "shipped", "delivery"],
     },
     user: {
-      type: mongosee.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
@@ -49,7 +59,7 @@ const orderSchema = new mongosee.Schema(
     deliveredAt: {
       type: Date,
     },
-    shipingAddress: {
+    shippingAddress: {
       type: Object,
       require: true,
     },
@@ -57,4 +67,4 @@ const orderSchema = new mongosee.Schema(
   { timestamps: true }
 );
 
-module.exports = mongosee.model("Order", orderSchema);
+module.exports = mongoose.model("Order", orderSchema);

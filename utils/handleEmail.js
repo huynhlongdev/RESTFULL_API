@@ -17,8 +17,6 @@ exports.handleEmail = async (action, email, link) => {
       text: "",
     };
 
-    console.log("vvdvdv");
-
     if (action == "reset") {
       mailOptions.subject = `Password Reset Request`;
       mailOptions.text = `You are receiving this email because you (or someone else) has requested a password reset. Please click on the link below to reset your password: \n\n ${link}`;

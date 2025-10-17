@@ -31,8 +31,15 @@ const couponSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
-  { toJSON: { virtuals: true }, toObject: { virtuals: true } }
+  {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
 // couponSchema.virtual("status").get(function () {
@@ -48,4 +55,4 @@ const couponSchema = new mongoose.Schema(
 //   }
 // });
 
-module.exports = mongoose.model("Order", couponSchema);
+module.exports = mongoose.model("Coupon", couponSchema);

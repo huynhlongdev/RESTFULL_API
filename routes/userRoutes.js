@@ -13,6 +13,9 @@ router.route("/").get(protected, getUsers);
 
 router.route("/profile").get(protected, getUserProfile);
 
-router.route("/:id").put(protected, updateUser).delete(protected, deleteUser);
+router
+  .route("/:id")
+  .put(protected, allowedRole("admin", "manage"), updateUser)
+  .delete(protected, allowedRole("admin", "manage"), deleteUser);
 
 module.exports = router;

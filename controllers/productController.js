@@ -1,179 +1,260 @@
 const mongoose = require("mongoose");
-const { default: slugify } = require("slugify");
+const { handleSlug } = require("../utils/slug");
 const Product = require("../models/ProductModel");
+const asyncHandler = require("express-async-handler");
+const { shortContent } = require("../utils/shortContent");
 
 /* 
 Create Product (Admin only)
 @route POST /api/v1/products 
 @access Private
 */
-exports.createProduct = async (req, res) => {
-  const { name, description, price, quantity, sold, brand, category } =
-    req.body;
+exports.createProduct = asyncHandler(async (req, res) => {
+  const { name, description } = req.body;
+  const userId = req?.userId;
+  const productName = name?.trim();
 
-  try {
-    const productExists = await Product.findOne({ name });
-
-    // Check if product exists
-    if (productExists) {
-      return res
-        .status(400)
-        .json({ message: "Product already exits", success: false });
-    }
-
-    // Create slug
-    const slug = slugify(name, { lower: true });
-
-    // Create product
-    const product = await Product.create({
-      name,
-      description,
-      price,
-      quantity,
-      sold,
-      brand,
-      slug,
-      category,
+  if (!productName) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid product name.",
     });
-
-    res.status(201).json({ message: "Product created successfully", product });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
   }
-};
+
+  // Create slug
+  const slug = await handleSlug(productName, Product);
+
+  // Trim and limit description to 120 words
+  req.body.short_description = shortContent(description, 40);
+  req.body.user = userId;
+  req.body.slug = slug;
+  const product = await Product.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    message: "Product created successfully",
+    data: product,
+  });
+});
 
 // @Des Get Products List
 // @route GET /api/v1/products
 // @access Public
-exports.getProducts = async (req, res) => {
-  try {
-    const { page = 1, limit = 10, name, sort = "DESC" } = req.query;
+exports.getProducts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, search, sort = "DESC", status = 1 } = req.query;
 
-    let query = {};
-    let sortOption = {};
+  let query = {};
+  let sortOption = {};
 
-    const pageNumber = parseInt(page, 10);
-    const limitNumber = parseInt(limit, 10);
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
 
-    // Check if name query exists
-    if (name) {
-      query.name = { $regex: name, $options: "i" };
+  // Check if name query exists
+  if (search) {
+    // query.name = { $regex: search, $options: "i" };
+
+    const words = search
+      .trim()
+      .split(/\s+/) // tách theo khoảng trắng
+      .filter(Boolean);
+
+    // tạo mảng regex cho từng từ (ví dụ: /oppo/i, /reno/i)
+    const regexList = words.map((word) => new RegExp(word, "i"));
+
+    // tạo query tìm các sản phẩm chứa tất cả từ khóa trong name, description hoặc brand
+    query.$or = regexList.map((regex) => ({
+      $or: [{ name: regex }, { description: regex }, { brand: regex }],
+    }));
+  }
+
+  if (sort) {
+    const validSortValues = ["ASC", "DESC"];
+    if (validSortValues.includes(sort.toUpperCase())) {
+      sortOption.name = sort.toUpperCase() === "DESC" ? -1 : 1;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid sort value. Use "ASC" or "DESC" only.`,
+      });
     }
+  }
 
-    if (sort) {
-      const validSortValues = ["ASC", "DESC"];
-      if (validSortValues.includes(sort.toUpperCase())) {
-        sortOption.name = sort.toUpperCase() === "DESC" ? -1 : 1;
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid sort value. Use "ASC" or "DESC" only.`,
-        });
-      }
-    }
+  if (parseInt(status) === 0) {
+    query.isActive = true;
+  }
 
-    // Get total products
-    const totalProducts = await Product.countDocuments(query);
+  // Get total products
+  const totalProducts = await Product.countDocuments(query);
 
-    // Get products with pagination
-    const products = await Product.find(query)
-      .sort(sortOption) // Sort by name
-      .limit(limitNumber) // limit number of products
-      .skip((pageNumber - 1) * limitNumber); // Skip to the next page
-    // Calculate total pages
-    const totalPages = Math.ceil(totalProducts / limitNumber);
+  // Get products with pagination
+  // const products = await Product.find(query)
+  //   .sort(sortOption) // Sort by name
+  //   .limit(limitNumber) // limit number of products
+  //   .skip((pageNumber - 1) * limitNumber)
+  //   .select("-metaTitle -metaDescription -reviews -category"); // Skip to the next page
 
-    res.status(200).json({
-      success: true,
+  const products = await Product.aggregate([
+    { $match: query },
+    { $sort: sortOption },
+    { $skip: (pageNumber - 1) * limitNumber },
+    { $limit: limitNumber },
+    {
+      $lookup: {
+        from: "reviews", // tên collection review (chữ thường + số nhiều)
+        localField: "_id",
+        foreignField: "product",
+        as: "reviews",
+      },
+    },
+    {
+      $addFields: {
+        totalReviews: { $size: "$reviews" },
+        averageRating: {
+          $cond: [
+            { $gt: [{ $size: "$reviews" }, 0] },
+            { $avg: "$reviews.rating" },
+            0,
+          ],
+        },
+      },
+    },
+    {
+      $project: {
+        metaTitle: 0,
+        metaDescription: 0,
+        reviews: 0, // ẩn toàn bộ danh sách review, chỉ giữ thống kê
+        category: 0,
+        user: 0,
+        attributes: 0,
+        description: 0,
+        short_description: 0,
+        variants: 0,
+        specifications: 0,
+      },
+    },
+  ]);
+
+  // Calculate total pages
+  const totalPages = Math.ceil(totalProducts / limitNumber);
+
+  res.status(200).json({
+    success: true,
+    data: products,
+    pagination: {
       totalProducts,
       currentPage: pageNumber,
       totalPages,
       limit: limitNumber,
-      data: products,
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+      hasNextPage: pageNumber < totalPages,
+      hasPrevPage: pageNumber > 1,
+    },
+  });
+});
 
 // @Des Get Product by ID
 // @route GET /api/v1/products/:id
 // @access Public
-exports.getProduct = async (req, res) => {
-  try {
-    const { id } = req.params;
+exports.getProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-    // Validate query
-    const query = mongoose.Types.ObjectId.isValid(id)
-      ? { _id: id }
-      : { slug: id };
+  // Validate query
+  const query = mongoose.Types.ObjectId.isValid(id)
+    ? { _id: id }
+    : { slug: id };
 
-    // Find prod
-    const product = await Product.findOne(query)
-      .populate({
-        path: "reviews",
-        select: "message rating user",
-        populate: {
-          path: "user",
-          select: "username",
-        },
-      })
-      .populate({
-        path: "category",
-        select: "name slug",
-      });
-
-    // Check if product exists
-    if (!product) {
-      return res.status(400).json({ message: "Product not found" });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: product,
+  const product = await Product.findOne(query)
+    .populate({
+      path: "reviews",
+      select: "message rating user",
+      populate: {
+        path: "user",
+        select: "username",
+      },
+    })
+    .populate({
+      path: "category",
+      select: "name slug",
     });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+
+  // Check if product exists
+  if (!product) {
+    return res.status(404).json({
+      success: false,
+      message: "Product not found",
+    });
   }
-};
+
+  res.status(200).json({
+    success: true,
+    data: product,
+  });
+});
 
 // Update Product by ID
 // route PUT/PATCH /api/v1/products/:id
 // @access Private
-exports.updateProduct = async (req, res) => {
-  try {
-    const { id } = req.params;
+exports.updateProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-    const product = await Product.findById(id);
-    if (!product) {
-      return res.status(400).json({ message: "Product not found" });
-    }
-
-    const updateProduct = await Product.findByIdAndUpdate(req.params);
-    res.status(200).json({
-      message: "Product updated successfully",
-      data: updateProduct,
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid category ID format",
     });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
   }
-};
+
+  const updateData = { ...req.body };
+
+  // if (updateData.slug) {
+  //   updateData.slug = await handleSlug(
+  //     updateData.slug || updateData.name,
+  //     Product
+  //   );
+  // }
+
+  const updateProduct = await Product.findByIdAndUpdate(id, updateData, {
+    new: true,
+    runValidators: true,
+  });
+
+  if (!updateProduct) {
+    return res.status(404).json({
+      success: false,
+      message: "Product not found",
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Product updated successfully",
+    data: updateProduct,
+  });
+});
 
 // Delete Product by ID
 // route DELETE /api/v1/products/:id
 // @access Private
-exports.deleteProduct = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const product = await Product.findById(id);
-    if (!product) {
-      return res.status(400).json({ message: "Product not found" });
-    }
-    await Product.findByIdAndDelete(id);
-    res.status(200).json({
-      message: "Product deleted successfully",
+exports.deleteProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid category ID format",
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
   }
-};
+
+  const deletedProduct = await Product.findByIdAndDelete(id);
+
+  if (!deletedProduct) {
+    return res.status(404).json({
+      success: false,
+      message: "Product not found",
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: `Product "${deletedProduct.name}" deleted successfully`,
+  });
+});

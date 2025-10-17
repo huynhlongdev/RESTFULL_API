@@ -1,33 +1,43 @@
-const User = require("../models/UserModel");
 const mongoose = require("mongoose");
+const asyncHandler = require("express-async-handler");
+const User = require("../models/UserModel");
 
-// @desc Get all users
+// @desc Get all users (with pagination)
 // @route GET /api/v1/users
 // @assess Private
-exports.getUsers = async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 10; // Default limit: 10
-    const page = parseInt(req.query.page) || 0; // Default page: 0 (first page)
+exports.getUsers = asyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 10; // Default limit: 10
+  const page = parseInt(req.query.page) || 0; // Default page: 0 (first page)
 
-    const totalUsers = await User.countDocuments();
+  // const totalUsers = await User.countDocuments();
 
-    const user = await User.find()
+  // const user = await User.find()
+  //   .limit(limit)
+  //   .skip(page * limit)
+  //   .select("-password -wishlist");
+
+  const [users, totalUsers] = await Promise.all([
+    User.find()
+      .select("-password -wishlist")
       .limit(limit)
-      .skip(page * limit)
-      .select("-password");
+      .skip(page * limit),
+    User.countDocuments(),
+  ]);
 
-    res.status(200).json({
-      data: user,
-      success: true,
-      total: user.length,
+  res.status(200).json({
+    success: true,
+    data: users,
+    pagination: {
+      totalUsers,
+      total: totalUsers.length,
       limit,
       currentPage: page,
       totalPages: Math.ceil(totalUsers / limit),
-    });
-  } catch (error) {}
-};
+    },
+  });
+});
 
-// @desc Get user profile
+// @desc Get current user profile
 // @route GET /api/v1/users/profile
 // @access Private
 exports.getUserProfile = async (req, res) => {
@@ -49,75 +59,86 @@ exports.getUserProfile = async (req, res) => {
   });
 };
 
-// @desc Update profile
+// @desc Update current user profile
 // @route PUT /api/v1/users/profile
 // @access Privete
-exports.updateProfile = async (req, res) => {
-  try {
-    const { user } = req;
-  } catch (error) {
-    res.status(500).json({
-      message: "Error" + error,
-    });
+exports.updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    res.status(400);
+    throw new Error("Invalid user ID");
   }
-};
+
+  const { username, email } = req.body;
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { username, email },
+    { new: true, runValidators: true, select: "-password -wishlist" }
+  );
+
+  if (!updatedUser) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Profile updated successfully",
+    data: updatedUser,
+  });
+});
 
 // @desc Update user by id
 // @route PUT/ PATCH /api/v1/users/:id
 // @access Privete
-exports.updateUser = async (req, res) => {
-  try {
-    const { id } = req.params;
+exports.updateUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-    const userExists = await User.findById(id);
-
-    console.log(req.body);
-
-    if (!userExists) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      id,
-      { username: req.body.username },
-      { new: true }
-    );
-
-    delete user.password;
-
-    res.status(200).json({
-      message: "User updated successfully",
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "error",
-    });
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400);
+    throw new Error("Invalid user ID");
   }
-};
+
+  const user = await User.findByIdAndUpdate(
+    id,
+    { username: req.body.username, active: req.body.active },
+    { new: true, runValidators: true, select: "-password -wishlist" }
+  );
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "User updated successfully",
+    data: user,
+  });
+});
 
 // @desc Delete user
 // @route DELETE /api/v1/users/:id
 // @access Private
-exports.deleteUser = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userExists = await User.findById(id);
+exports.deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-    if (!userExists) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    await User.findByIdAndDelete(id);
-
-    res.status(200).json({
-      message: "User deleted successfully",
-      success: true,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "error",
-    });
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    res.status(400);
+    throw new Error("Invalid user ID");
   }
-};
+
+  const user = await User.findByIdAndDelete(id);
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  res.status(200).json({
+    message: "User deleted successfully",
+    success: true,
+  });
+});

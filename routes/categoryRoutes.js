@@ -18,7 +18,7 @@ router
 router
   .route("/:id")
   .get(getCategory)
-  .put(protected, updateCategory)
-  .delete(protected, deleteCategory);
+  .put(protected, allowedRole("admin", "manage"), updateCategory)
+  .delete(protected, allowedRole("admin", "manage"), deleteCategory);
 
 module.exports = router;
