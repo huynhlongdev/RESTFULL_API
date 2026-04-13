@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { generateAccessToken } = require("../utils/token");
 const { handleEmail } = require("../utils/handleEmail");
+const ApiError = require("../utils/ApiError");
 
 /**
  * Description: Register user
@@ -18,16 +19,12 @@ exports.register = async (req, res) => {
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res
-        .status(400)
-        .json({ message: "User already exists", success: false });
-
-      // throw new Error("User already exists");
+      new ApiError(400, "User already exists");
     }
 
     // valid field
     if (!username || !email || !password) {
-      return res.status(400).json({ message: "Required fields" });
+      new ApiError(400, "Required fields");
     }
 
     // Check if user is the first user
@@ -50,11 +47,10 @@ exports.register = async (req, res) => {
     const resetUrl = `${link}/?token=${token}`;
 
     const emailStatus = await handleEmail("reset", user.email, resetUrl);
+
     // check sent mail success
     if (!emailStatus.success) {
-      return res.status(500).json({
-        message: "Failed to send email",
-      });
+      new ApiError(500, "Failed to send email");
     }
 
     res.status(201).json({
@@ -64,7 +60,7 @@ exports.register = async (req, res) => {
       user,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    new ApiError(500, err.message);
   }
 };
 

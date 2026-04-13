@@ -3,6 +3,7 @@ const { handleSlug } = require("../utils/slug");
 const Product = require("../models/ProductModel");
 const asyncHandler = require("express-async-handler");
 const { shortContent } = require("../utils/shortContent");
+const ApiError = require("../utils/ApiError");
 
 /* 
 Create Product (Admin only)
@@ -15,10 +16,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
   const productName = name?.trim();
 
   if (!productName) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid product name.",
-    });
+    throw new ApiError("400", "Invalid product name");
   }
 
   // Create slug
@@ -28,6 +26,9 @@ exports.createProduct = asyncHandler(async (req, res) => {
   description && (req.body.short_description = shortContent(description, 40));
   req.body.user = userId;
   req.body.slug = slug;
+
+  console.log(req.body);
+
   const product = await Product.create(req.body);
 
   res.status(201).json({
@@ -41,7 +42,13 @@ exports.createProduct = asyncHandler(async (req, res) => {
 // @route GET /api/v1/products
 // @access Public
 exports.getProducts = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search, sort = "DESC", status = 1 } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    sort = "DESC",
+    status = "",
+  } = req.query;
 
   let query = {};
   let sortOption = {};
@@ -79,19 +86,16 @@ exports.getProducts = asyncHandler(async (req, res) => {
     }
   }
 
-  if (parseInt(status) === 0) {
-    query.isActive = true;
+  if (status === "pending") {
+    query.status = "pending";
+  } else if (status === "public") {
+    query.status = "public";
+  } else if (status === "draft") {
+    query.status = "draft";
   }
 
   // Get total products
   const totalProducts = await Product.countDocuments(query);
-
-  // Get products with pagination
-  // const products = await Product.find(query)
-  //   .sort(sortOption) // Sort by name
-  //   .limit(limitNumber) // limit number of products
-  //   .skip((pageNumber - 1) * limitNumber)
-  //   .select("-metaTitle -metaDescription -reviews -category"); // Skip to the next page
 
   const products = await Product.aggregate([
     { $match: query },
@@ -104,6 +108,30 @@ exports.getProducts = asyncHandler(async (req, res) => {
         localField: "_id",
         foreignField: "product",
         as: "reviews",
+      },
+    },
+    {
+      $addFields: {
+        minVariantPrice: { $min: "$variants.price" },
+        maxVariantPrice: { $max: "$variants.price" },
+      },
+    },
+    {
+      $addFields: {
+        display_price: {
+          $cond: [
+            { $gt: [{ $size: "$variants" }, 0] },
+            { $ifNull: ["$minVariantPrice", "$price"] },
+            "$price",
+          ],
+        },
+        max_price: {
+          $cond: [
+            { $gt: [{ $size: "$variants" }, 0] },
+            { $ifNull: ["$maxVariantPrice", "$price"] },
+            "$price",
+          ],
+        },
       },
     },
     {
@@ -218,7 +246,7 @@ exports.getProduct = asyncHandler(async (req, res) => {
     })),
   }));
 
-  // Xử lý specifications (chia nhóm như Tiki)
+  // Xử lý specifications
   const specifications = product.specifications?.map((spec) => ({
     name: spec.name,
     attributes: spec.attributes.map((a) => ({
@@ -262,11 +290,20 @@ exports.getProduct = asyncHandler(async (req, res) => {
       title: product.metaTitle || product.name,
       description: product.metaDescription || product.short_description || "",
     },
+    status: product.status,
     created_at: product.createdAt,
     updated_at: product.updatedAt,
   };
 
-  console.log(product);
+  let price_from = null;
+  let price_to = null;
+  if (product.variants && product.variants.length > 0) {
+    const prices = product.variants.map((v) => v.price || 0);
+    price_from = Math.min(...prices);
+    price_to = Math.max(...prices);
+    response.price_from = price_from || product.price;
+    response.price_to = price_to || product.price;
+  }
 
   res.status(200).json({
     success: true,

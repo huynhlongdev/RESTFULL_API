@@ -1,9 +1,7 @@
-const { type } = require("express/lib/response");
 const mongoose = require("mongoose");
-
 const variantSchema = new mongoose.Schema(
   {
-    sku: { type: String, required: true, unique: true, trim: true },
+    sku: { type: String, required: true, trim: true },
     barcode: { type: String, trim: true },
     price: { type: Number, required: true, min: 0 },
     original_price: { type: Number, min: 0 },
